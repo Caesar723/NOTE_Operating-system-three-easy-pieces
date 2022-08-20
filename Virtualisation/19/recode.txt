@@ -1,0 +1,89 @@
+19.0
+分页会带来较高的性能开销
+会额外增加一次内存访问
+
+可以用硬件来加速
+	地址转换路旁缓冲储存器translation-lookaside buffer（TLB）
+	也可以叫地址转换缓存address-translation cache
+	
+	对每次访问，都会检查TLB如果有期望的转换映射，会可以很快完成转换
+
+19.1
+大致算法
+从虚拟地址提取virtual page number
+然后检查 translation-lookaside buffer是否有这个VPN
+如果有TLB hit，就意味着TLB有该页面的的转换映射
+这样就可以从TLB取出page frame number，与原来的offset结合
+期望的物理地址就形成了
+
+如果CPU没有找到映射（not hit）
+会用转换过的映射来更新translation-lookaside buffer
+在地址有效，有相关的访问权限下
+
+19.3
+处理TLB未命中
+
+搞硬件的不太相信搞操作系统的
+所以全部由硬件来处理
+以前的硬件有复杂指令集Complex- Instruction set computer（CISC）
+硬件必须知道页表在硬件中的任何位置
+发生not hit时，硬件会遍历整个page table
+取出想要的映射，用它更新translation-lookaside buffer
+（x86架构 采用固定多页表multi-level page table）
+
+现代的体系结构都是精简指令级计算机reduced- Instruction set computer
+软件管理TLB software- managed TLB
+在not hit时硬件会抛出异常
+会暂停指令流
+将特权升至kernel mode
+跳转到陷阱处理程序trap handler（操作程序的一段代码）
+然后处理TLB未命中，然后从陷阱返回
+程序会再次使用指令导致TLB命中（hit）
+
+与之前的陷阱返回不同
+返回后会进行执行操作系统之后的指令
+所以在陷入内核时必须保存不同的程序计数器pc
+以便将来继续正确的执行
+
+要额外小心TLB未命中递归
+
+19.4
+硬件TLB内容
+	有32，64，128项
+	是全相联的fully associative
+	映射存在TLB任意位置
+	硬件会并行查找TLB
+	内容： VPN｜PFN｜其他位（有效位valid bit-标识该项是不是有效映射，保护位protection-可读可执行可写）
+
+19.5
+在上下文切换对TLB的处理
+
+TLB包含的映射只对当前进程有效
+进行上下文切换时
+硬件和操作系统要注意运行的进程不能误读之前进程的地址映射
+
+硬件：
+	上下文切换直接清空TLB
+软件：
+	把有效valid位设置成0
+问题：
+	每次程序运行，都会触发未命中，开销会高
+解决：
+	会增加硬件支持
+	实现上下文切换TLB共享
+	地址空间标识符address space identifier（ASID相当于进程标识符PID，位比PID少）
+	ASID放在其他位里
+	上下文切换时，将某个特权寄存器设置为当前的ASID
+
+19.6
+缓存替换cache replacement 
+	当translation-lookaside buffer插入新项时，替换哪个旧项
+	
+替换最近最少使用least- recently-used（LRU）
+
+随机random替换
+
+19.7
+如果一个程序段时间访问的页数超过了TLB的页数，未命中的次数就会变多，开销会变大
+解决的方法就是用更大的页
+更大页通常被database management system使用（数据结构大，随机访问）

@@ -1,0 +1,43 @@
+27.3
+锁lock
+如果在调用pthread_mutex_lock()时没有其他线程持有锁
+该线程将持有锁然后进入该线程
+当另一个线程调用pthread_mutex_lock()
+该函数不会返回直到第一个线程调用pthread_mutex_unlock()把锁释放
+问题：
+	缺乏正确的初始化lack of proper initialization
+	pthread_mutex_t lock=PTHREAD_MUTEX_INITIALIZER
+	将锁设置成默认值
+
+	初始化的动态方法
+	int rc=pthread_mutex_t(&lock,NULL);
+	assert(rc==0);
+	第一个参数是锁本身地址
+	（通常使用这个）
+	当用完锁时
+	调用pthread_mutex_destory()
+	
+	pthread_mutex_trylock
+		如果锁被占用
+		这个将会失败
+	pthread_mutex_timedlock
+		会在超时或获取锁后返回
+	两个都是获取锁
+
+27.4
+条件变量condition variable
+pthread_cond_t cond=PTHREAD_COND_INITIALIZER
+(可以用pthread_cond_init()来初始化和pthread_cond_destroy())
+	一个线程在等待另一个线程执行某些工作，这很有用
+	pthread_cond_wait()
+		使调用的线程进入休眠状态
+		等待其他线程发出信号
+		当程序某些内容发生变化时，休眠的线程可能会被影响
+		第二个参数是lock
+		因为在让线程进入休眠外
+		会让调用者睡眠时释放锁
+		在被唤醒时，会重新获取锁
+			
+	pthread_cond_signal()
+	
+	在用条件变量时要带有lock

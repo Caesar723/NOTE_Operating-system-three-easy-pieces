@@ -1,0 +1,110 @@
+37.0
+磁盘驱动器hard disk drive
+	持久数据储存的主要形式
+
+
+37.1
+hard disk drive接口
+	drive 有大量扇区（512字节）组成
+	磁盘有N个扇区
+	扇区从0～N-1编号
+	0～N-1是drive的地址空间address space
+
+单个扇区（512字节）的写入是atomic（完整地完成）
+支持多扇区操作
+
+37.2
+盘片platter
+	是一个圆形坚硬的表面
+	通过引入磁性变化来永久储存数据
+	磁盘可能有一个或多个platter
+	每个platter有两面-每面称为表面
+	由铝制成涂上磁性层
+	即使驱动器断电也能持久储存数据未
+主轴spindle
+	所有platter围绕spindle
+	spindle 连接到一个电机
+	以一个恒定的速度旋转盘片
+	旋转速率 rotation per minute RPM——典型数值7200～15000RPM
+数据在表面上被编码，一个圆称为磁道
+	一个表面包含特别多track
+
+读写操作由磁头disk head完成
+	每个表面都有一个disk head
+	所有磁头连在一个disk arm上
+
+37.3
+单磁道延迟：旋转延迟
+	简单磁盘中
+		等待期望的扇区旋转到磁头下
+		这种等待叫旋转延迟rotational delay
+多磁道：寻道空间
+	现在的磁盘有数以百万计track
+	驱动器要先将disk arm移动到正确的磁道-寻道seek过程
+
+	seek有许多阶段：
+		disk arm移动的加速加速阶段
+		disk arm的惯性滑动
+		disk arm的减速
+		disk head小心地放下-停放时间settling time（在0.5～2ms）
+	当正确的扇区到达disk head时
+		传输transfer
+		数据从表面读取或传输到表面
+
+其他细节：
+	需要驱动器采用磁盘偏斜track skew——确保即使在跨越track边界时，顺序读取也可以方便服务
+	
+	外圈track 比内圈的更多-称为多区域multi- zoned
+		磁盘被组成多个区域
+		每个区域里一个track有相同数量多扇区
+
+	track buffer
+		该buffer是少量内存（8～16MB）
+		驱动器可以用这个内存保存从磁盘读取或写入多数据
+		可以让驱动器快速响应所有后续请求
+
+37.4
+IO时间=Tseek + T旋转 + T transfer
+
+容量：300GB
+平均seek时间：4ms
+RPM：15000
+最大传输速度：125MB/S
+磁盘：4
+缓存：16MB
+
+Tseek=4ms，T旋转=（1/（15000/60））/2=每次旋转要2ms  T传输=30ups
+
+随机random工作负载
+	向磁盘随机位置发送小的读取请求（4kb）
+	T io=6ms
+	假设读取4KB
+	那速率是0.66MB/s
+顺序sequential工作负载
+	从磁盘连续读取大量扇区，不会跳过
+	T io=800ms
+	速率为125MB/s
+
+37.5
+磁盘调度
+
+最短寻道时间优先SSTF
+（shortest-seek-time- first）
+	选择在最近track上的请求先完成
+	SSTF不是万能的
+		饥饿starnation
+		无法利用驱动器的几何结构-可以用最近块优先解决NBF nearest block first
+
+电梯elevator 算法
+SCAN
+	如果请求的块在这次扫一遍中已经服务过了
+	不会立即处理
+	排队等待下次扫一遍
+circular-scan
+	从外圈扫到内圈
+	从内圈扫到外圈
+
+
+最短定位时间优先 SPTF shortest positioning time first
+	如果seek的时间比旋转要快得多
+	这个要比SSTF要好

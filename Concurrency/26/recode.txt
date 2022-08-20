@@ -1,0 +1,54 @@
+26.0
+线程thread
+一个程序只有一个执行点（一个程序计数器PC）
+多线程multi- threaded有多个执行点（多个程序计数器PC）
+	他们虽然每个像一个进程
+	但他们共享地址空间
+	可以访问相同的数据
+每个线程有自己的PC
+当它们运行在同一个处理器时
+从一个线程切换到另一个线程
+会发生上下文切换context switch
+我们需要一个或多个线程控制块thread control block（tcb）
+	在切换时不需要改变address space（不需要切换页表）
+（如果是进程，要将状态保存在进程控制块process control block（pcb）） 
+
+在多线程中
+	在address space中，每个线程都有一个栈
+	所有位于栈上的变量，参数，返回值等将被放在称为线程本地thread-local的地方（就是相关线程的栈）
+26.3
+假设线程1进入代码区域
+要增加一个计数器
+它将counter多值（50）加载到寄存器eax
+eax=50（线程1）
+然后向寄存器+1
+eax=51
+
+现在，时钟中断发生了
+操作系统将当前运行的线程的状态（PC，寄存器，eax）保存到thread control block（TCB）
+线程2被选中
+会将counter的值放入它的eax（每个线程都有属于自己的寄存器，context switch时，会让代码将寄存器虚拟化virtualised）
+counter的值还是50（因为线程1没有保存counter）
+然后将eax+1
+然后把内容保存到counter
+
+然后又发生context switch
+线程1恢复运行
+其eax里面还是51
+最后保存这个51到counter
+
+（这些结果为不确定indeterminate计算）
+我们将此段代码称为临界区critical section
+我们想要的互斥mutual exclusion-保证一个线程在临界区运行其他线程被阻止进入临界区
+
+26.4
+解决方法
+	希望以原子的方式atomically执行（一般做不到）
+
+	同步原语synchronization primitive
+		使用硬件同步原语
+		加上操作系统的一些帮助
+临界区critical section-是访问共享资源的一段代码，资源通常是变量或者数据结构
+竞争条件race condition-出现在当多个线程大致同时进入critical section
+不确定性indeterminate-程序由一个或多个race condition组成，输出取决于哪些线程何时运行，结果不一
+互斥mutual exclusion-保证只有一个线程进入critical section

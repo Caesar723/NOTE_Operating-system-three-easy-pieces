@@ -1,0 +1,28 @@
+#include <semaphore.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+int counter=0;
+
+void * add(void * s){
+    sem_t *sem=(sem_t*) s;
+    for(int i=0;i<1e7;i++){
+        sem_wait(sem);
+        counter++;
+        sem_post(sem);
+    }
+    return NULL;
+}
+
+int main(){
+    sem_t s;
+    sem_init(&s,0,1);
+    int i;
+    pthread_t *ts[10];
+    for (i=0;i<10;i++){
+
+
+    
+    return 0;
+}

@@ -1,0 +1,137 @@
+31.1
+信号量
+
+初始化：
+	#include <semaphore>
+	sem_t s;
+	sem_init(&s,0,1);(次函数在mac上被弃用，所以可能会没有用)
+	第三个参数将值初始化为1
+	第二个参数表示信号量在同一个进程的多个线程是共享的
+用法：
+	int sem_wait()
+		要么在信号值>=1是直接返回
+		要么让调用线程挂起（自己睡眠，放弃处理器）
+		知道有post（）操作
+
+	int sem_post()
+		直接增加信号量的值
+		如果有等待的线程
+		只唤醒其中的一个
+	当信号量为负数时
+	值为等待线程的个数
+
+31.2
+将信号量作为锁
+锁只有两个状态-持有和未持有
+	二值信号量binary semaphore
+调度程序状态schedular state：
+	运行
+	就绪
+		等待别的线程运行
+	睡眠
+
+31.3
+生产者producer 消费者consumer
+1 int buffer[MAX];
+2 int fill = 0;
+3 int use = 0;
+4
+5 void put(int value) {
+6 	buffer[fill] = value; // line f1
+7 	fill = (fill + 1) % MAX; // line f2
+8 } 
+9
+10 int get() {
+11 	int tmp = buffer[use]; // line g1
+12 	use = (use + 1) % MAX; // line g2
+13 	return tmp;
+14 }
+	Figure 31.9: The Put And Get Routines
+
+1 sem_t empty;
+2 sem_t full;
+  sem_t lock;
+3
+4 void *producer(void *arg) {
+5 	int i;
+6 	for (i = 0; i < loops; i++) {
+7 		sem_wait(&empty); // line P1
+		sem_wait(&lock);
+8 		put(i); // line P2
+		sem_post(&lock);
+9 		sem_post(&full); // line P3
+10 	}
+11 }
+12
+13 void *consumer(void *arg) {
+14 	int i, tmp = 0;
+15 	while (tmp != -1) {
+16 		sem_wait(&full); // line C1
+		sem_wait(&lock);
+17 		tmp = get(); // line C2
+		sem_post(&lock);
+18 		sem_post(&empty); // line C3
+19 		printf("%d\n", tmp);
+20 	}
+21 }
+22
+23 int main(int argc, char *argv[]) {
+24 	// ...
+	sem_init(&lock,0,1)//二值信号锁-防止在MAX>1时多个线程同时进入put（）
+25 	sem_init(&empty, 0, MAX); // MAX buffers are empty to begin with...
+26 	sem_init(&full, 0, 0); // ... and 0 are full
+27 	// ...
+28 }
+Figure 31.10: Adding The Full And Empty Conditions
+
+
+31.5
+读者-写者 锁 reader- writer lock
+
+rwlock_acquire_writelock()获得锁
+rwlock_release_writelock()释放锁
+通过writelock信号量保证只有一个写者能获得锁进入critical section
+
+1 typedef struct _rwlock_t {
+2 	sem_t lock; // binary semaphore (basic lock)
+3 	sem_t writelock; // used to allow ONE writer or MANY readers
+4 	int readers; // count of readers reading in critical section
+5 } rwlock_t;
+6
+7 void rwlock_init(rwlock_t *rw) {
+8 	rw->readers = 0;
+9 	sem_init(&rw->lock, 0, 1);
+10 	sem_init(&rw->writelock, 0, 1);
+11 }
+12
+13 void rwlock_acquire_readlock(rwlock_t *rw) {
+14 	sem_wait(&rw->lock);
+15 	rw->readers++;
+16 	if (rw->readers == 1)
+17 		sem_wait(&rw->writelock); // first reader acquires writelock
+18 	sem_post(&rw->lock);
+19 }
+20
+21 void rwlock_release_readlock(rwlock_t *rw) {
+22 	sem_wait(&rw->lock);
+23 	rw->readers--;
+24 	if (rw->readers == 0)
+25 		sem_post(&rw->writelock); // last reader releases writelock
+26 	sem_post(&rw->lock);
+27 }
+28
+29 void rwlock_acquire_writelock(rwlock_t *rw) {
+30 	sem_wait(&rw->writelock);
+31 } 
+32
+33 void rwlock_release_writelock(rwlock_t *rw) {
+34 	sem_post(&rw->writelock);
+35 }
+问题：
+	读者可能会饿死写者（读者太多）
+
+31.6
+sem3.c
+
+31.7
+实现信号量

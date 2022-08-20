@@ -1,0 +1,88 @@
+32.2
+非死锁缺陷
+
+违反原子性atomicity violation
+	1 Thread 1::
+	2 if (thd->proc_info) {
+	3 	...
+	4 	fputs(thd->proc_info, ...);
+	5 	...
+	6 } 
+	7
+	8 Thread 2::
+	9 thd->proc_info = NULL;
+	解决方法：加锁
+
+错误顺序order violation
+	1 Thread 1::
+	2 void init() {
+	3 	...
+	4 	mThread = PR_CreateThread(mMain, ...);
+	5 	...
+	6 } 
+	7
+	8 Thread 2::
+	9 void mMain(...) {
+	10 	...
+	11 	mState = mThread->State;
+	12 	...
+	13 }
+	如果线程1没有先执行而去先执行线程2
+	那mThread指向的是空
+	就会报错
+	解决方法：加锁和条件变量，在线程1没有执行前如果执行线程2就将它睡眠
+
+大部分非死锁就是atomicity violation和order violation
+
+32.3
+死锁缺陷
+如：
+	线程1有lock1，在等待lock2
+	线程2有lock2，在等待lock1
+如何发生：
+	在大型代码库里
+	组件之间有很多依赖
+	例子：
+		虚拟内存需要访问文件系统将数据从磁盘读到内存页
+		文件系统要和虚拟内存交互，去申请一页内存
+		用这一页存放读到的块
+
+预防：
+	循环等待
+		让代码不断产生循环等待
+		total ordering-每次都是先申请L1 在申请L2
+		partial ordering-在代码开头注释 加锁的顺序
+	持有并等待
+		假如要获取锁L1，L2
+		就在把获取锁的部分设为critical section
+		用另外一个锁L_p来进行atomically
+		不适用于封装
+	非抢占
+		1 top:
+		2 lock(L1);
+		3 if (trylock(L2) == -1) {
+		4 	unlock(L1);
+		5 	goto top;
+		6 }
+		trylock（）会尝试获取锁，失败会返回-1
+		问题：
+			如果抢到L1的话
+			代码分配了一些内存
+			如果L2没抢到
+			又要释放内存（浪费）
+	互斥
+
+	通过调度避免avoidance
+		假设有两个CPU
+		有4个线程
+		线程1有锁1，2
+		线程2有锁1，2
+		线程3有锁1
+		线程4没有锁
+		那就把有相同锁的线程1，2交给同一个CPU
+		就不会同时运行
+		（会限制开发）
+	检查恢复
+		允许死锁偶尔发生
+		检查到死锁时再做相应行动
+	

@@ -1,0 +1,39 @@
+18.0
+分页
+把一个address space分成固定大小的单元
+每个单元称为一页
+
+把物理内存看成定长槽块的阵列，叫页帧page frame
+每个page frame包含一个虚拟内存页
+
+内存会分成许多 页帧page frame
+
+18.1
+页表page table
+	为address space 的每个虚拟页面进程地址转换address translation
+	虚拟页0-》物理page frame 3，virtual page1-〉page frame7
+	每个进程都有一个这个页表
+
+转换translate
+	把虚拟地址分成虚拟页面号virtual page number 和偏移量 offset
+	如果进程的虚拟空间是64字节，每页字节为16
+	那可以让virtual page number占2位（64/16=4）
+	让offset占4位（16）
+18.2
+页表非常大
+使用将每个进程的页表存在内存中
+
+18.3
+page table的组织
+	是一种数据结构
+	将虚拟页号映射到物理帧号上
+PTE是这个数据结构，里面有各种位（如valid bit）还有PFN
+
+18.4
+分页很慢
+
+18.5
+内存追踪
+
+
+	

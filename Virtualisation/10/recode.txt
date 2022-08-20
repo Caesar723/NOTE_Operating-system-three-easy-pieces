@@ -1,0 +1,81 @@
+10.0
+多处理器调度multiprocessor scheduling
+多核处理器multicore 将多个CPU组装在一块芯片上
+为了让程序并行执行parallel 用多线程thread-将工作分散在多个cpu上
+问题：
+	多处理器调度multiprocessor scheduling
+
+10.1
+与单核CPU的区别：
+	对硬件缓存cache的使用
+	multiprocessor 之间共享数据的方式
+单CPU系统中：
+	有个多级硬件缓存hardware cache-会让更快执行程序，与RAM互补，让CPU又大又快
+	如果一个程序要从内存读取一个值
+	第一次读数据时是在内存里，需花费许多时间
+	处理器会判断该数据是否会被再用
+	因此会把它放入CPU缓存中
+	如果程序在次需要相同的数据，CPU会先查cache，这样会快
+cache：
+	基于局部性locality
+	时间局部性：当一个数据被访问时再不久的将来也会被访问，像循环的数据或指令本身
+	空间局部性：当访问地址为x的数据，可能会访问周围的数据，像数组
+问题：缓存一致性cache coherence
+	假设在CPU1从内存读取地址A，得到D的值
+	程序修改D的值为Z，只是将它的缓存改为Z，内存没有
+	当操作系统中断此程序的运行，让CPU2重新读取A地址的值，就会有问题
+硬件提供了基本解决方案-通过监控内存访问：
+	在基于bus的系统中，总线窥探bus snooping：
+		每个缓存会监听链接所有缓存和内存的总线
+		如果cpu发现其放在缓存的数据进行了
+		会作废invalidate本地副本（从缓存移除）
+		或update它
+10.2
+应用程序也要关心共享数据的访问
+需要使用互斥原语-锁
+	如果用多CPU并发访问一个共享队列
+	如果没有锁，只有底层协议，不会得到预期的结果
+	要用锁来保证数据结构状态更新的原子性
+如果用两个线程调用deleteNode（）函数：
+	线程1，2会将head的值赋在tmp中
+	那它们删除的值也是同一个
+	释放free（）也是同一个
+	返回的数也是同一个
+
+可以加锁locking来解决
+	要互斥锁pthread_mutex_t m;
+	函数开始时用lock（&m）;
+	在结束时用unlock(&m);
+10.3
+缓存亲和度cache affinity
+	CPU1的缓存中维护许多状态，下次该进程在相同的CPU1上运行时，会变快
+	但在CPU2上运行时要重新加载数据
+	虽然有硬件可以保证缓存一致性
+	但尽可能让一个进程保持在同一个CPU上
+
+10.4
+单队列多处理器调度Single Queue multiprocessor scheduling SQMS-简单
+每个CPU都可以沾一点
+问题：
+	可扩展性scalability：如果在代码中加锁locking来保证原子性，随着单个这样的锁的增加，系统花费巨大时间在锁的开销上
+	亲和性：每个工作都可能会在不同的cpu上工作cache affinity降低
+
+
+多队列多处理调度Multi-Queue Multiprocessor Scheduling  MQMS
+	会有多个调度队列
+	每个queue可以用不同的调度规则（比如MLFQ 或 RR）
+	当一个工作进入系统后，系统会随机或选择较空的队列，然后将其放入此调度队列
+	这样，cpu就会相互独立
+	所有的工作都保持在固定的CPU上（cache affinity）
+问题：
+	负载不均load imbalance
+	如果有三个任务进入系统，CPU1有一个任务，CPU2有两个任务
+	而且如果CPU1的任务做完，CPU1就没有任务，单CPU2有两个任务
+解决：
+	用迁移migration
+	将一个任务从一个CPU迁移到另一个CPU
+	如果CPU1有一个任务，CPU2有两个，就把一个火多个任务不断迁移
+如何实现解决：
+	工作窃取work stealing
+	工作量较少的队列会不定期的偷看别的队列
+	如果如果目标队列比源队列更满，就会窃取任务

@@ -1,0 +1,43 @@
+33.0
+基于事件的并发event-based concurrency
+不用线程，如何构建并发服务器
+
+33.1
+事件循环event loop
+循环获得事件并去处理
+处理时间的程序event hander
+处理事件时是系统的唯一活动
+调度就是决定接下来处理哪个事件
+
+33.2
+select（）（pull（））
+	检查是否有关注的进入IO
+	如果检查是否有网络数据包到达
+	传入readfds，writefds，errorfds
+	检查某些描述符是否已经准备好读取，写入或异常处理
+问题：
+	基于事件的方法只允许主事件循环
+	没有多线程
+	如果有IO操作（read open）
+	就会浪费资源
+
+33.6
+异步IO
+asynchronous IO
+aio control block
+struct aiocb
+	int 文件描述符
+	off_t 文件内的偏移量
+	size_t 长度的请求
+	void * 目标内存位置
+用异步调用来读取文件
+	int aio_read（struct aiocb )
+	如果成功，会立刻返回
+用来检查aiocbp请求是否完成
+	int aio_error(aiocb )
+	如果没有，返回EINPROGRESS
+但是一直循环检查是否完成是不符合实际的
+
+用中断方法interrupt
+用信号在异步IO完成时通知应用程序
+

@@ -1,0 +1,110 @@
+29.0
+如何给数据结构加锁
+29.1
+简单无扩展计数器
+	普通的线程安全thread safe
+	在线程越多的时候性能越差，耗时越多
+	多处理器上的多线程运行像单线程一样快（完美扩展perfect scaling）
+
+可扩展计数器
+	可扩展计数器很重要
+	懒惰计数器用多个局部计数器和一个全局计数器
+	先增加它的局部计数器
+	过一段时间之后用锁加到全局计数器
+	让全局计数器变为零
+	这个取决于一个值S（sloppiness）-到这个值S之后就会加到Global里
+	s越大，扩展性越大
+29.2
+并发链表
+	。。。
+
+扩展列表
+手锁hand-over-hand locking
+	每个链表里都有一个锁，代替之前到一个锁
+	遍历列表时
+	抢到下个节点的锁
+	释放当前节点的锁
+	（开销巨大）
+29.3
+并发队列
+	一个叫队列的数据结构
+	里面包含链表的头和尾
+	有两个锁-一个负责头，一个负责尾
+	增加时尾部增加
+	出队列从头部出
+29.4
+散列表
+2 typedef struct __node_t {
+3 	int key;
+4 	struct __node_t *next;
+5 } node_t;
+6
+7 // basic list structure (one used per list)
+8 typedef struct __list_t {
+9 	node_t *head;
+10 	pthread_mutex_t lock;
+11 } list_t;
+12
+13 void List_Init(list_t *L) {
+14 	L->head = NULL;
+15 	pthread_mutex_init(&L->lock, NULL);
+16 }
+17
+18 int List_Insert(list_t *L, int key) {
+19 	
+20 	node_t *new = malloc(sizeof(node_t));
+21 	if (new == NULL) {
+22 		perror("malloc");
+23 		
+24 		return -1; // fail
+25 	}
+26 	new->key = key;
+	pthread_mutex_lock(&L->lock);
+27 	new->next = L->head;
+28 	L->head = new;
+29 	pthread_mutex_unlock(&L->lock);
+30 	return 0; // success
+31 }
+32
+33 int List_Lookup(list_t *L, int key) {
+34 	pthread_mutex_lock(&L->lock);
+35 	node_t *curr = L->head;
+36 	while (curr) {
+37 		if (curr->key == key) {
+38 			pthread_mutex_unlock(&L->lock);
+39 			return 0; // success
+40 		}
+41 		curr = curr->next;
+42 	}
+43 	pthread_mutex_unlock(&L->lock);
+44 	return -1; // failure
+45 }
+#####################################
+1 #define BUCKETS (101)
+2
+3 typedef struct __hash_t {
+4 	list_t lists[BUCKETS];
+5 } hash_t;
+6
+7 void Hash_Init(hash_t *H) {
+8 	int i;
+9 	for (i = 0; i < BUCKETS; i++) {
+10 		List_Init(&H->lists[i]);
+11 	}
+12 }
+13
+14 int Hash_Insert(hash_t *H, int key) {
+15 	int bucket = key % BUCKETS;
+16 	return List_Insert(&H->lists[bucket], key);
+17 }
+18
+19 int Hash_Lookup(hash_t *H, int key) {
+20 	int bucket = key % BUCKETS;
+21 	return List_Lookup(&H->lists[bucket], key);
+22 }
+
+有100个散列桶
+利用空间换时间
+有很多分支
+重要读取会很快
+性能高

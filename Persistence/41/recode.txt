@@ -1,0 +1,73 @@
+41.0
+老unix文件系统
+	一小块S-超级块，包含卷的大小，有多少inode，指向空闲列表的头部指针
+	大一点的inode块-包含文件系统所有的inode
+	剩余的都是用户数据块
+
+41.1
+问题
+性能不佳
+	老unix文件系统将磁盘当成随机存取
+	有昂贵的定位成本
+	文件数据块离inode块远-需要时间去seek
+
+	文件系统最终会变得碎片化fragmented
+
+	原始块太小512字节
+
+41.2
+FFS（fast file system）
+	让文件系统的结构和分配策略具有磁盘意识
+	通过保持与文件相通的接口（open， read ，write，close）
+	
+
+41.3
+结构
+柱面组cylinder group（块组 block group）
+	假设一个磁盘有10个柱面组（有10个group）
+	每个柱面组都有
+		超级块super block的副本（每个group都一样）-如果有一个损坏，可以用另一个来挂载
+		inode位图bitmap-针对每组的inode
+		数据块 bitmap--针对每组的数据块
+		位图是文件系统中可用空间的绝佳方法
+
+41.4
+策略：分配文件和目录（把相关的同学放在一起）
+
+目录放置
+	找到分配数量少的cylinder group和大量自由的inode
+	将目录数据和inode放在这个组中
+
+文件
+	确保将文件数据块分配到与其inode相通的到cylinder group中（防止长时间寻道seek）
+	
+	与同一目录的所有文件在同一个cylinder group
+
+41.6
+大文件会妨碍相关文件放在同一个cylinder group中
+
+FFS的做法：
+	将一定数量的块放在一个块组中
+
+	将大文件分开，每一个块组放在不同的cylinder group
+
+41.7
+当时文件平均大小2kb
+块4kb
+有内部碎片internal fragmentation
+
+子块sub-block 
+	有512字节
+	文件系统可以将它分配给文件
+	如果创建一个1kb小文件，占用两个子块
+	随着文件变长
+	会分成更多子块直到到了4kb为止
+
+	问题：
+		效率低下
+
+ffs做法：
+	修改libc库
+	将它们缓冲写入		
+
+		

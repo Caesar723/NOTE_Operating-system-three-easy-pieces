@@ -1,0 +1,30 @@
+30.0
+锁并不是并发程序设计的唯一原语
+线程会在某一条件condition满足后会继续运行
+join（）等待是如何实现的呢？
+
+30.1
+线程可以使用条件变量condition variable
+condition variable 是一个显式队列
+当某些状态不满足的话
+线程会把自己加入队列
+waiting该条件
+pthread_cond_t c;
+线程要睡时用wait（）
+线程要唤醒时用signal（）
+（hold the lock when calling signal）
+30.2
+生产者/消费者（producer/consumer）
+界缓冲区bounded buffer
+
+producer 有一个或多个
+	它们把生成的数据放入缓冲区
+consumer 有一个
+	它从缓存区取走数据
+（如producer把http请求放入队列（缓冲区），consumer取走请求并处理）
+（管道也是用bounded buffer-  cowsay helloCaesar|cowsay 左边是producer右边是consumer）
+唤醒只会唤醒一个线程
+
+30.3
+覆盖条件covering condition
+pthread_cond_broadcast()唤醒所有等待的线程（可能会影响性能）

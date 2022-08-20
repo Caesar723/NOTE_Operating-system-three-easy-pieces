@@ -1,0 +1,216 @@
+28.1
+锁lock
+lock是一个锁变量lock variable
+	保存了锁在某一时刻的状态
+	要么是可用的-没有线程持有lock
+	要么是被占用的-有一个线程持有lock
+	（也会保存一些隐藏信息，如持有锁的线程，讲求锁的线程队列）
+lock（）
+	尝试获取lock
+	如果没有其他线程持有lock	
+	该线程会获得lock并进入critical section
+	该线程会被称为拥有者owner
+	如果另外一个线程调用lock（）
+	但现在已经有线程持有lock了
+	所以调用lock（）时是不会返回的
+unlock（）
+	owner 一旦调用unlock（）
+	lock就变为可用的了（在没有其他线程调用lock（）的情况下）
+	如果有线程等待（卡在lock（））
+	它会注意锁的变化并获取锁，进入critical section
+
+28.2
+pthread锁
+POSIX库把锁称为互斥量mutex（被用来与线程之间的互斥）
+POSIX的lock（）和unlock（）会传入一个变量（lock的地址）
+	使用不同的lock来保护不同数据或结构
+	可以增加并发
+
+28.4
+评价锁
+建立标准
+	1，是否可以完成基本任务-互斥mutex
+	2，公平性fairness，当锁可用时，是否每一个竞争的公平线程都能抢到锁（是否会有竞争锁会饿死starve）
+	3，性能performance，使用锁的时候增加的时间开销，（在没有竞争的情况和CPU上多个线程竞争情况上要考虑）
+
+28.5
+控制中断
+在critical section关闭中断
+因为没有中断，线程可用确定代码会继续执行下去，从而实现原子化
+缺点：
+	此方法会让所有线程拥有特权操作
+	不支持多处理器，多线程运行在不同的CPU上，每个线程会进入同一个critical section，关闭中断不会有用
+	会导致中断流失，会有系统问题
+	效率低
+28.6
+让硬件支持锁
+测试并设置指令test-and-set instruction（也叫原子交换 automatic exchange）
+
+如果用代码的话（软件）：
+	正确性：
+		有很大概率两个线程会进入critical section
+	性能：
+		在线程已经有所时
+		用的是自选等待spin-waiting（像while，不停检查值）
+		浪费时间
+28.7
+如果不用硬件的话是不行的
+一些系统提供了这个指令，支持这种lock（test-and-set指令）
+	SPIC-ldstub（load/store unsigned byte）
+	x86-xchg（atomic exchange）
+int TestAndSet(int * old, int new){
+	int getOld=*old;
+	*old=new;
+	return getOld;
+}//这个代码会原子地atomically执行
+//既可以测试旧值也也可以设置新值
+
+28.7
+评价自旋锁
+	有正确性correctness
+	没有公平性fairness
+		无法保证，可能会永远自旋
+	性能performance
+		自旋锁性能开销相当大
+		在单CPU下
+		自旋一个时间片
+		浪费CPU周期
+		多CPU没问题
+28，9
+比较并交换
+	SPARC是compare-and-swap
+	x86是compare-and- exchange
+int compare_And_swap(int *ptr, int expect, int new){
+	int actual=*ptr;
+	if(actual==expect){
+		*ptr=new;
+	}
+	return actual;
+}//减少赋值
+
+28.10
+链接加载load-linked和条件储存store- condition
+load-linked
+	和加载指令类似
+store- condition
+	只有上一次加载的地址没有被更新时（调用load-linked）
+	才会被更新并返回1（超过）
+	不然返回0（失败）
+
+while（LoadLinked(&lock->flag) || !StoreConditional(&lock->flag,1));
+
+
+28.11
+获取并增加fetch-and-add
+可以atomically返回地址的旧值
+并让该值增加1
+
+ticket锁
+一个数据结构
+	带有turn
+	和ticket
+当调用lock（）时
+	把ticket（0）作为参数放入fetch and add（ticket变为1）
+	返回值（0）会和turn（0）比较
+	
+当第二个线程调用lock（）时
+	把ticket（1）作为参数放入fetch and add（ticket变为2）
+	返回值（1）会和turn（0）比较
+	回旋锁
+以此类推
+
+当调用unlock（）时
+	把turn（1）作为参数放入fetch and add（turn 变为1，这样就可以让第二个线程进入critical section）
+这样可以让所有线程抢到锁
+
+28.12
+自旋效率低下
+一个线程会自旋检查一个不会改变的值
+浪费整个时间片
+如果有N个线程竞争一个锁
+情况会更糟糕
+所以只有硬件支持是不够的
+还需要操作系统支持
+
+28.13
+如果critical section的线程context switch，别的线程只会自旋
+
+方法1:
+	在自旋的时候，放弃CPU
+	yield():线程会调用它主动放弃CPU，让其他线程运行
+		该系统调用可以让running态变为ready态
+问题：
+	如果有100个线程
+	只有一个线程持有锁
+	其余99个线程会一直处于让出
+	成本还是很高
+	而且持有锁的线程很可能会饿死
+
+28.14
+需要一个队列来保存等待锁的线程
+park（）可以让调用线程休眠
+unpark（threadID）会唤醒线程
+在获取不到锁时休眠，在有锁时唤醒
+1 typedef struct __lock_t {
+2 	int flag;
+3 	int guard;
+4 	queue_t *q;
+5 } lock_t;
+6
+7 void lock_init(lock_t *m) {
+8 	m->flag = 0;
+9 	m->guard = 0;
+10 	queue_init(m->q);
+11 }
+12
+13 void lock(lock_t *m) {
+14 	while (TestAndSet(&m->guard, 1) == 1)
+15 		; //acquire guard lock by spinning
+16 	if (m->flag == 0) {
+17 		m->flag = 1; // lock is acquired
+18 		m->guard = 0;
+19 	} else {
+20 		queue_add(m->q, gettid());
+21 		m->guard = 0;
+22 		park();
+23 	}
+24 }
+25
+26 void unlock(lock_t *m) {
+27 	while (TestAndSet(&m->guard, 1) == 1)
+28 		; //acquire guard lock by spinning
+29 	if (queue_empty(m->q))
+30 		m->flag = 0; // let go of lock; no one wants it
+31 	else
+32 		unpark(queue_remove(m->q)); // hold lock (for next thread!)
+33 	m->guard = 0;
+34 }
+	
+问题：
+	在调用park（）之前（已经加入了队列）突然开始上下文切换
+	正好这个持有锁的线程调用unlock（）
+	然后调用了unpark（）
+	移除了刚刚加入队列的threadID
+	这样那个线程就会永久休眠
+解决：	
+	用setpark（）
+	如果已经调用了unpark（）
+	在调用setpark（）
+	就会立即返回，而不是一直休眠
+
+28.15
+Linux提供了futex（类似于park）
+	futex_wait(address,expected)
+		如果address处的值==expected
+		就会休眠
+		否则就会返回
+	futex_wait(address)
+		唤醒等待队列中的一个线程
+
+28.16
+二阶段锁two- phase lock
+在很快要放弃锁的时候
+自旋spin其实很有用
+第一阶段会先spin一段时间，希望能获取锁
+如果第一阶段没有获取，到第二阶段，它会休眠
+(杂合hybrid)

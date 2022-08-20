@@ -1,0 +1,39 @@
+2.0
+程序运行：
+    获取指令fetch
+    解码decode
+    执行execute
+
+虚拟化 virtualization：确保系统易于使用和高效运行
+	将物理资源转成更为强大通用的虚拟形式
+	有时将操作系统称为虚拟机 virtual machine
+
+操作系统提供了一些接口 api ，典型的操作系统有几百个系统调用 system call 有时会叫标准库 standard library
+
+操作系统有时叫resource manager
+	虚拟化让许多程序运行 共享cpu
+	让许多程序同时访问自己的指令和数据
+
+虚拟化cpu （virtualizing the cpu）
+	在只有一个处理器的情况下，将单个cpu转换成无限个cpu
+
+操作系统承担资源管理器（resource manager）
+
+2.2
+每个进程会访问自己的虚拟地址空间（virtual address space）
+
+2.3
+并发（concurrency）
+	同时处理很多事情
+
+2.4 
+持久性（persistence）
+需要硬件和软件永久persistently储存数据
+硬盘驱动hard drive 是长期保存信息的通用储存库
+管理磁盘的软件叫文件系统file system：以高效的方式把创建的file存在系统磁盘上
+
+2.5 
+建立一个系统，目标：
+	建立一个抽象 abstraction-让系统方便易于使用
+	提高性能 performance-最小化操作系统的开销 minimize the overhead（额外时间-指令，额外空间-内存或磁盘）
+	Os 和应用程序和应用程序之间有保护（protection）-隔离 isolation，进程彼此隔离
